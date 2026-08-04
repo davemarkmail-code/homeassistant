@@ -1,0 +1,221 @@
+# =============================================================================
+#  AUTOMATIONS  —  alerts, and watchdogs for integrations that go quiet
+# =============================================================================
+#
+#  THE THEME OF THIS FILE
+#  ----------------------
+#  Most home automation guidance is about making things happen. These are about
+#  noticing when things have STOPPED happening — which is far harder, because a
+#  broken integration usually looks identical to a quiet house.
+#
+#  Every one of these came from something that actually went wrong.
+# =============================================================================
+
+
+# -----------------------------------------------------------------------------
+#  1. UPS  —  tell me the moment mains power goes
+# -----------------------------------------------------------------------------
+#  Requires the NUT integration (Network UPS Tools). The status_data sensor
+#  gives short codes: OL = on line (mains), OB = on battery, CHRG = charging.
+#
+#  DELIVERY WARNING, learned the hard way: I originally attached a custom sound
+#  payload to the "on battery" message. Apple silently DROPPED it — so the
+#  mains-restored message arrived and the power-cut one never did, which is
+#  exactly backwards. Keep alert payloads plain unless you have a reason.
+#
+#  Also: for the notification to reach you during a real cut, your ROUTER and
+#  your modem/ONT must be on the UPS too. A UPS keeping only the server alive
+#  gives you a server talking to nothing.
+# -----------------------------------------------------------------------------
+- id: ups_power_cut_alert
+  alias: UPS - power cut alert
+  description: >
+    Notifies when the UPS drops to battery, and again when mains returns.
+  mode: queued
+  max: 5
+  triggers:
+    - trigger: template
+      value_template: "{{ 'OB' in states('sensor.ups_status_data') }}"
+      id: onbattery
+    - trigger: template
+      value_template: "{{ 'OL' in states('sensor.ups_status_data') }}"
+      id: mains
+  conditions: []
+  actions:
+    - choose:
+        - conditions:
+            - condition: trigger
+              id: onbattery
+          sequence:
+            - action: notify.mobile_app_your_phone
+              data:
+                title: "Power cut - UPS on battery"
+                message: >
+                  Mains lost. Battery {{ states('sensor.ups_battery_charge') }}%,
+                  about {{ (states('sensor.ups_battery_runtime')|float(0)/60)|round(0) }}
+                  min left at {{ states('sensor.ups_real_power') }}W.
+        - conditions:
+            - condition: trigger
+              id: mains
+          sequence:
+            - action: notify.mobile_app_your_phone
+              data:
+                title: "Mains restored"
+                message: >
+                  Power is back. Battery
+                  {{ states('sensor.ups_battery_charge') }}% and recharging.
+
+
+# -----------------------------------------------------------------------------
+#  2. DOORBELL WATCHDOG  —  for an integration whose event listener dies quietly
+# -----------------------------------------------------------------------------
+#  THE FAULT: cloud doorbell integrations keep a push listener open. When it
+#  drops, POLLED sensors carry on updating happily while EVENTS stop arriving.
+#  So the integration looks perfectly healthy, the device works in its own app,
+#  and your doorbell simply never rings in Home Assistant.
+#
+#  THE TELL: an "activity" sensor keeps moving while the ding/motion event
+#  entities are frozen. That combination is the signature — and it is what this
+#  automation looks for.
+#
+#  Note the DOUBLE condition. Checking only for silent events would fire during
+#  a quiet week away. We fire only when the device is demonstrably alive AND the
+#  events have stopped.
+# -----------------------------------------------------------------------------
+- id: doorbell_event_watchdog
+  alias: Doorbell - reload if events go stale
+  description: >
+    Reloads the integration when activity is recent but no event has arrived
+    for 12 hours, which indicates a dead push listener.
+  mode: single
+  triggers:
+    - trigger: time_pattern
+      hours: "/3"
+  conditions:
+    # The device IS reporting activity, so it is not merely a quiet house
+    - condition: template
+      value_template: >
+        {{ states('sensor.doorbell_last_activity')
+             not in ['unknown','unavailable']
+           and (as_timestamp(now())
+                - as_timestamp(states('sensor.doorbell_last_activity'), 0)) < 43200 }}
+    # …but neither event entity has fired in 12 hours
+    - condition: template
+      value_template: >
+        {{ (as_timestamp(now())
+             - as_timestamp(states('event.doorbell_ding'), 0)) > 43200
+           and (as_timestamp(now())
+             - as_timestamp(states('event.doorbell_motion'), 0)) > 43200 }}
+  actions:
+    - action: homeassistant.reload_config_entry
+      target:
+        entity_id: event.doorbell_ding
+    - delay:
+        seconds: 20
+    - action: notify.mobile_app_your_phone
+      data:
+        title: "Doorbell watchdog"
+        message: "Events had gone stale, so I reloaded the integration."
+
+
+# -----------------------------------------------------------------------------
+#  3. EV CHARGER STALL DETECTOR
+# -----------------------------------------------------------------------------
+#  THE FAULT: my charger's local API stops responding roughly once a day while
+#  its cloud connection stays up. The phone app looks fine; Home Assistant's
+#  values freeze. Once it reported a phantom 7.2kW charging session into a car
+#  that was already full, with its internal clock seven hours adrift.
+#
+#  Because one of my dashboard cards SUBTRACTED charger power from house load,
+#  that phantom figure made the whole house appear to be using nothing.
+#
+#  This watches for the charger's data going stale while the inverter's data
+#  keeps flowing — the same "alive but silent" signature as the doorbell.
+# -----------------------------------------------------------------------------
+- id: ev_charger_stall_detector
+  alias: EV charger - detect stalled local API
+  description: >
+    Notifies when the charger's sensors freeze while the inverter keeps
+    updating, which means its local API has stopped responding.
+  mode: single
+  triggers:
+    - trigger: time_pattern
+      minutes: "/15"
+  conditions:
+    # Inverter data is fresh (so the poller itself is healthy)
+    - condition: template
+      value_template: >
+        {{ (as_timestamp(now())
+             - as_timestamp(states.sensor.inverter_load_power.last_changed, 0)) < 300 }}
+    # …but the charger hasn't said anything for 20 minutes
+    - condition: template
+      value_template: >
+        {{ (as_timestamp(now())
+             - as_timestamp(states.sensor.ev_charger_power.last_changed, 0)) > 1200 }}
+  actions:
+    - action: notify.mobile_app_your_phone
+      data:
+        title: "EV charger not responding"
+        message: >
+          Charger data frozen for
+          {{ ((as_timestamp(now())
+              - as_timestamp(states.sensor.ev_charger_power.last_changed, 0))/60)|round(0) }}
+          minutes while the inverter is fine. It may need a power cycle.
+
+
+# -----------------------------------------------------------------------------
+#  4. LOW STORAGE WARNING  (games console, NAS, anything with a free-space sensor)
+# -----------------------------------------------------------------------------
+- id: console_low_storage
+  alias: Console - low storage warning
+  description: Nudges when free space drops below a threshold.
+  mode: single
+  triggers:
+    - trigger: numeric_state
+      entity_id: sensor.console_free_space
+      below: 20
+      for:
+        minutes: 10
+  conditions: []
+  actions:
+    - action: notify.mobile_app_your_phone
+      data:
+        title: "Console storage low"
+        message: >
+          Only {{ states('sensor.console_free_space') }}GB free.
+
+
+# -----------------------------------------------------------------------------
+#  5. OVERNIGHT AUDIO GUARD  —  belt and braces after the 4am incident
+# -----------------------------------------------------------------------------
+#  My "everything off" script now pauses audio first, so this should never be
+#  needed. It exists anyway, because "should never" is doing a lot of work in
+#  that sentence.
+#
+#  If music is playing in the small hours with the amplifier off, nobody is
+#  listening to it — so stop it.
+# -----------------------------------------------------------------------------
+- id: overnight_silent_audio_guard
+  alias: Audio - stop silent overnight playback
+  description: >
+    If the speaker is playing between midnight and 6am while the amplifier is
+    off, pause it. Silent playback becomes loud playback the moment something
+    powers the amp on.
+  mode: single
+  triggers:
+    - trigger: time_pattern
+      minutes: "/10"
+  conditions:
+    - condition: time
+      after: "00:00:00"
+      before: "06:00:00"
+    - condition: state
+      entity_id: media_player.lounge_speaker
+      state: playing
+    - condition: state
+      entity_id: media_player.lounge_receiver
+      state: "off"
+  actions:
+    - action: media_player.media_pause
+      target:
+        entity_id: media_player.lounge_speaker

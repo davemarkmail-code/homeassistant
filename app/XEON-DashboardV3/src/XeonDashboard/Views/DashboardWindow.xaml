@@ -1,0 +1,46 @@
+<Window x:Class="XeonDashboard.Views.DashboardWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        Title="XEON Dashboard"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        WindowStartupLocation="Manual"
+        ShowInTaskbar="False"
+        Background="{StaticResource AppBackgroundBrush}"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True">
+
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+    </Window.Resources>
+
+    <Grid>
+        <!-- The dashboard itself. -->
+        <wv2:WebView2 x:Name="WebView"
+                      DefaultBackgroundColor="#0B0D10" />
+
+        <!-- Loading / reconnect overlay. Sits above the WebView until ready. -->
+        <Grid x:Name="Overlay"
+              Background="{StaticResource AppBackgroundBrush}"
+              Visibility="{Binding IsOverlayVisible, Converter={StaticResource BoolToVis}}">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock Text="XEON Dashboard"
+                           Foreground="{StaticResource AppForegroundBrush}"
+                           FontSize="34" FontWeight="Light"
+                           HorizontalAlignment="Center" />
+
+                <!-- Minimal indeterminate progress; replaced with a nicer visual later. -->
+                <ProgressBar IsIndeterminate="True"
+                             Width="240" Height="4" Margin="0,28,0,0"
+                             Foreground="{StaticResource AppAccentBrush}"
+                             Background="#1B2027" BorderThickness="0" />
+
+                <TextBlock Text="{Binding StatusMessage}"
+                           Foreground="#9AA4B2"
+                           FontSize="15" Margin="0,20,0,0"
+                           HorizontalAlignment="Center" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>
