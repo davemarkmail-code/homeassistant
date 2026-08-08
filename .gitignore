@@ -1,0 +1,60 @@
+# ── Secrets — never commit these ──────────────────────────────
+*.dat                       # DPAPI-encrypted tokens
+*token*
+*secret*
+*credential*
+halo-config.json            # any real API config
+*-config.json
+!*-config.example.json      # …but DO keep the examples
+
+# ── Live data dumps (may contain personal info) ───────────────
+*.txt
+!README.txt
+!**/docs/*.txt
+*-summary.json
+*-state.json
+*-state.txt
+*-history.json
+*-debug.json
+NowPlayingArtwork.json
+office-network-state.json
+generation-history.json
+
+# ── Logs ──────────────────────────────────────────────────────
+*.log
+
+# ── Exported dashboard configs ────────────────────────────────
+# Lovelace exports embed entity IDs, camera names and internal URLs.
+# Sanitise before committing, then force-add the clean copy.
+lovelace/*.json
+!lovelace/*.example.json
+
+# ── Backups ───────────────────────────────────────────────────
+*.bak
+*.backup*
+*.before-*
+Backups/
+
+# ── Build / OS noise ──────────────────────────────────────────
+bin/
+obj/
+publish/
+[Dd]ebug/
+[Rr]elease/
+x64/
+*.user
+*.suo
+.vs/
+.idea/
+*.nupkg
+packages/
+node_modules/
+*.zip
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# ── Kiosk app runtime config (holds your HA address) ──────────
+kiosk/**/settings.json
+!kiosk/**/settings.sample.json
+!kiosk/**/settings.example.json
