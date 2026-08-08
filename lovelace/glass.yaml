@@ -1,0 +1,109 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  glass.yaml — frosted glass tiles
+#
+#  Copy the `card:` block onto any custom:button-card. Copy the ROOT CARD block
+#  onto the view's outer card. You need BOTH — see the warning at the bottom.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+# ── 1. THE TILE ──────────────────────────────────────────────────────────────
+# Put this on each tile (ideally once, in a button_card_template).
+
+styles:
+  card:
+    # Translucent fill + a diagonal specular sweep.
+    # The sweep is what makes it read as a SHEET rather than a tinted box.
+    - background: >
+        linear-gradient(135deg,
+          rgba(255,255,255,0.155) 0%,
+          rgba(255,255,255,0.05)  26%,
+          rgba(255,255,255,0.012) 52%,
+          rgba(255,255,255,0)     78%),
+        linear-gradient(0deg, rgba(14,17,24,0.26), rgba(14,17,24,0.26))
+
+    # The blur. brightness() is what lifts the panel above its surroundings —
+    # without it the tile reads as the same shade as the gaps and disappears.
+    - backdrop-filter: blur(17px) saturate(122%) brightness(1.16)
+    - -webkit-backdrop-filter: blur(17px) saturate(122%) brightness(1.16)
+
+    # A crisp rim. This is doing more work than you'd think — drop it to 0.15
+    # and the whole effect goes soft.
+    - border: 1px solid rgba(255,255,255,0.34)
+
+    # Directional edge lighting (light top-left, dark bottom-right) + lift.
+    - box-shadow: >
+        inset 1px 1px 0 rgba(255,255,255,0.34),
+        inset -1px -1px 0 rgba(0,0,0,0.42),
+        0 14px 38px rgba(0,0,0,0.7)
+
+    - border-radius: 16px
+    - padding: 16px 18px
+
+
+# ── 2. THE ROOT CARD (the view's outer button-card) ──────────────────────────
+# This is the half everyone misses.
+
+styles:
+  card:
+    - height: 100%
+    - box-sizing: border-box
+    - padding: 10px
+    - overflow: hidden
+
+    # Texture for the blur to work on. Put the image in config/www/
+    # so it's served at /local/ — ONE file shared by every view.
+    - background-image: url(/local/glass-texture.jpg)
+    - background-size: cover
+    - background-position: center
+
+    # A full-surface colour wash over the texture. The 9999px inset spread
+    # covers the whole card, so one greyscale image can be tinted any colour
+    # without ever touching the image file.
+    - box-shadow: >
+        0 0 0 1px rgba(255,255,255,0.04),
+        inset 0 0 0 9999px rgba(2,5,16,0.95)
+
+
+# ── 3. OPTIONAL: runtime tint switcher ───────────────────────────────────────
+# Handy while tuning, because colours look different on a wall panel than on
+# your desk. Create input_select.dashboard_tint with your options, then:
+
+styles:
+  card:
+    - box-shadow: >
+        [[[ var t = states['input_select.dashboard_tint'].state;
+            var m = {
+              'Deep Blue'   : '10,17,44,0.88',
+              'Deeper Blue' : '5,10,28,0.92',
+              'Deepest Blue': '2,5,16,0.95'
+            };
+            return '0 0 0 1px rgba(255,255,255,0.04), inset 0 0 0 9999px rgba('
+                   + (m[t] || m['Deepest Blue']) + ')'; ]]]
+triggers_update:
+  - input_select.dashboard_tint
+
+# Add this to any tile to cycle by touch, then delete it once you've chosen:
+hold_action:
+  action: call-service
+  service: input_select.select_next
+  service_data:
+    entity_id: input_select.dashboard_tint
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  WHY THIS DOESN'T WORK WITHOUT THE TEXTURE
+#
+#  backdrop-filter blurs what is BEHIND the element. Blur a flat colour and you
+#  get back the same flat colour — the effect is mathematically present and
+#  visually zero. Over a plain dark background you will see NO difference and
+#  conclude your browser doesn't support it.
+#
+#  Add texture FIRST, then blur. Not the other way round.
+#
+#  Also: if ANY ancestor has opacity < 1, filter, transform, perspective,
+#  will-change or contain, it creates a new backdrop root and every
+#  backdrop-filter inside it silently stops working. An opacity fade-in
+#  animation on the root card will make your glass flicker on every re-render.
+#
+#  Keep the texture DARK and LOW CONTRAST. Anything bright fights your text.
+# ═════════════════════════════════════════════════════════════════════════════

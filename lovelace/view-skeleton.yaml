@@ -1,0 +1,112 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  view-skeleton.yaml — a working grid view to build from
+#
+#  One full-screen custom:button-card per view, with nested button-cards as
+#  tiles placed into named grid areas. Sized for 2560x720 with the HA header
+#  and sidebar hidden.
+#
+#  Paste as a view, adjust the areas, and add your own tiles.
+# ─────────────────────────────────────────────────────────────────────────────
+
+views:
+  - title: Home
+    path: home
+    panel: true                       # required — gives the card the full viewport
+    cards:
+      - type: custom:button-card
+        show_icon: false
+        show_name: false
+
+        styles:
+          card:
+            - height: 100%
+            - box-sizing: border-box
+            - padding: 10px
+            - overflow: hidden
+            - background-image: url(/local/glass-texture.jpg)
+            - background-size: cover
+            - background-position: center
+            - box-shadow: >
+                0 0 0 1px rgba(255,255,255,0.04),
+                inset 0 0 0 9999px rgba(2,5,16,0.95)
+
+          grid:
+            # 12 columns lets you do halves, thirds and quarters cleanly
+            - grid-template-columns: repeat(12, minmax(0,1fr))
+
+            # 72px header, 10px gutter, then two equal content rows.
+            # minmax(0,1fr) NOT 1fr — see the note at the bottom.
+            - grid-template-rows: 72px 10px minmax(0,1fr) 10px minmax(0,1fr)
+
+            - column-gap: 10px
+            - grid-template-areas: >
+                "media  media  media  nav    nav    nav    nav    nav    power  power  clock  clock"
+                ".      .      .      .      .      .      .      .      .      .      .      ."
+                "tileA  tileA  tileA  tileB  tileB  tileB  tileC  tileC  tileC  tileD  tileD  tileD"
+                ".      .      .      .      .      .      .      .      .      .      .      ."
+                "tileA  tileA  tileA  tileB  tileB  tileB  tileE  tileE  tileE  tileF  tileF  tileF"
+
+          # ── EVERY wrapper that should fill its cell needs display:grid ──────
+          # `display: block` here is THE most common cause of a gap at the
+          # bottom of a tile. See docs/05-gotchas.md.
+          custom_fields:
+            media:  [{ height: 100% }, { display: grid }]
+            nav:    [{ height: 100% }, { display: grid }]
+            power:  [{ height: 100% }, { display: grid }]
+            clock:  [{ height: 100% }, { display: grid }]
+            tileA:  [{ height: 100% }, { display: grid }]
+            tileB:  [{ height: 100% }, { display: grid }]
+            tileC:  [{ height: 100% }, { display: grid }]
+            tileD:  [{ height: 100% }, { display: grid }]
+            tileE:  [{ height: 100% }, { display: grid }]
+            tileF:  [{ height: 100% }, { display: grid }]
+
+        custom_fields:
+
+          clock:
+            card:
+              type: custom:button-card
+              template: dm_plain
+              name: |
+                [[[ return new Date().toLocaleTimeString('en-GB',
+                      {hour:'2-digit', minute:'2-digit'}); ]]]
+              triggers_update:
+                - sensor.time          # add HA's time sensor to tick it
+
+          tileA:
+            card:
+              type: custom:button-card
+              template: dm_tile
+              name: Solar
+              icon: mdi:solar-power-variant
+              entity: sensor.your_solar_power
+
+          tileB:
+            card:
+              type: custom:button-card
+              template: dm_tile
+              name: Now Playing
+              icon: mdi:music-note
+              entity: sensor.office_now_playing
+
+          # …repeat for tileC–tileF
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  THREE THINGS THAT WILL SAVE YOU AN HOUR
+#
+#  1. minmax(0,1fr) not 1fr
+#     A bare 1fr won't shrink below its content's minimum, so one overflowing
+#     tile pushes the whole grid off-screen. minmax(0,1fr) keeps it locked to
+#     the viewport.
+#
+#  2. display: grid on every custom_fields wrapper
+#     A nested button-card inside a `display:block` wrapper will NOT stretch,
+#     even with height:100% set on the wrapper AND on the nested card. The
+#     card's height:100% resolves against a content-sized parent, so it
+#     collapses to its content and leaves a gap.
+#
+#  3. Use the same gaps on every view
+#     Pick one standard (10px here) and make every view byte-identical.
+#     One view drifting to 30px is visibly wrong long before you find why.
+# ─────────────────────────────────────────────────────────────────────────────

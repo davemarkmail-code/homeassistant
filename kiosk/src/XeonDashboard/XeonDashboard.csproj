@@ -1,0 +1,61 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!-- WebView2 + display APIs require a Windows target. -->
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <!-- WinForms is enabled only for System.Windows.Forms.Screen (monitor bounds)
+         and the tray NotifyIcon added in a later stage. -->
+    <UseWindowsForms>true</UseWindowsForms>
+
+    <RootNamespace>XeonDashboard</RootNamespace>
+    <AssemblyName>XeonDashboard</AssemblyName>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+
+    <!-- WFAC010 is a WinForms analyzer that wrongly flags our manifest DPI
+         settings; WPF reads Per-Monitor V2 from the manifest, which is correct. -->
+    <NoWarn>$(NoWarn);WFAC010</NoWarn>
+
+    <!-- Kiosk appliance targets a single machine; x64 keeps things simple. -->
+    <Platforms>x64</Platforms>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+
+    <Product>XEON Dashboard</Product>
+    <Company>XEON Dashboard</Company>
+    <Version>0.1.0</Version>
+    <AssemblyVersion>0.1.0.0</AssemblyVersion>
+    <FileVersion>0.1.0.0</FileVersion>
+  </PropertyGroup>
+
+  <!--
+    NOTE ON VERSIONS: these are known-good stable versions at time of writing.
+    `dotnet restore` will pull them from nuget.org; bump them freely.
+  -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
+    <PackageReference Include="Serilog.Extensions.Hosting" Version="8.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+  </ItemGroup>
+
+  <!-- The app icon is optional until you drop one in Assets\app.ico. -->
+  <PropertyGroup Condition="Exists('Assets\app.ico')">
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <!-- Optional: drop the Evergreen WebView2 bootstrapper here to make the
+       runtime install fully automatic on machines that lack it. -->
+  <ItemGroup Condition="Exists('MicrosoftEdgeWebView2Setup.exe')">
+    <None Include="MicrosoftEdgeWebView2Setup.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>

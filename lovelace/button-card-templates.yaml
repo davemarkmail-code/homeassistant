@@ -1,0 +1,110 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  button-card-templates.yaml
+#
+#  Paste this at the TOP LEVEL of your dashboard config (same level as `views:`),
+#  then reference a template from any card with:  template: dm_tile
+#
+#  Defining the look once is the single highest-value thing in this repo.
+#  Restyling 22 tiles across 11 views was ONE edit because they shared a
+#  template. The handful styled inline each had to be done by hand.
+# ─────────────────────────────────────────────────────────────────────────────
+
+button_card_templates:
+
+  # ── Base tile ──────────────────────────────────────────────────────────────
+  dm_tile:
+    show_icon: true
+    show_name: true
+    styles:
+      card:
+        - padding: 16px 18px
+        - border-radius: 16px
+        - box-sizing: border-box
+        - overflow: hidden
+        - background: rgba(255,255,255,0.045)
+        - border: 1px solid rgba(255,255,255,0.13)
+        - box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), 0 8px 24px rgba(0,0,0,0.35)
+      grid:
+        - grid-template-areas: '"i n" "content content"'
+        - grid-template-columns: min-content 1fr
+        - grid-template-rows: min-content 1fr
+      img_cell:
+        - justify-content: start
+        - align-items: center
+      icon:
+        - width: 28px
+        - color: rgba(235,240,235,0.82)
+      name:
+        - justify-self: start
+        - padding-left: 10px
+        - font-size: 20px
+        - font-weight: 600
+        - color: rgb(229,229,229)
+        - letter-spacing: 0.2px
+
+  # ── Header-row chip (72px tall strip at the top of a view) ────────────────
+  dm_top:
+    show_icon: false
+    show_name: false
+    styles:
+      card:
+        - height: 72px
+        - padding: 8px 12px
+        - border-radius: 16px
+        - box-sizing: border-box
+        - background: rgba(255,255,255,0.05)
+        - border: 1px solid rgba(255,255,255,0.13)
+
+  # ── Small action button (sits INSIDE a tile) ──────────────────────────────
+  #    Deliberately NOT glassed. Nesting backdrop-filter inside a glass panel
+  #    samples the panel rather than the page, and goes muddy.
+  dm_small_button:
+    show_icon: true
+    show_name: true
+    styles:
+      card:
+        - height: 48px
+        - padding: 0 10px
+        - border-radius: 12px
+        - background: rgba(255,255,255,0.05)
+        - border: 1px solid rgba(255,255,255,0.10)
+      grid:
+        - grid-template-areas: '"i n"'
+        - grid-template-columns: min-content 1fr
+      icon:
+        - width: 21px
+        - color: rgba(235,240,235,0.75)
+      name:
+        - font-size: 14px
+        - font-weight: 600
+        - letter-spacing: 0.4px
+        - text-transform: uppercase
+
+  # ── Bare text, no card at all (clocks, labels) ────────────────────────────
+  dm_plain:
+    show_icon: false
+    styles:
+      card:
+        - background: none
+        - border: none
+        - box-shadow: none
+        - padding: 0
+        - height: 72px          # constrain it, or it overflows its grid row
+        - overflow: hidden
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  NOTES
+#
+#  * Audit these occasionally. Mine drifted into two templates that differed
+#    ONLY in icon colour (one blue, one white), which is how half a dashboard
+#    ends up subtly inconsistent without anyone deciding it should be.
+#
+#  * dm_plain sets an explicit height on purpose. A card with no height
+#    constraint renders at its natural content size and will overflow a fixed
+#    grid row — a clock rendering 96px tall in a 72px row pushes itself down
+#    and out of alignment with everything beside it.
+#
+#  * Sizes here are tuned for a WALL PANEL viewed from a few feet away.
+#    On a desk monitor they'll look large. That's intentional.
+# ─────────────────────────────────────────────────────────────────────────────
