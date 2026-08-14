@@ -26,6 +26,19 @@ part you can't get from documentation elsewhere.
 
 ---
 
+## → [INDEX.md](INDEX.md) — the full contents page
+
+**Start there.** It lists every file, has an "I want to…" table, and a keyword block
+so you can search for the thing you're stuck on rather than reading top to bottom.
+
+There's a second index inside
+**[lovelace/patterns/](lovelace/patterns/README.md)** — a cookbook of **22 individual
+dashboard tiles**, each standalone. Solar flow diagram, camera grid, climate dial,
+now-playing, confirmation dialogs, drilldown views and so on. Take one, take all of
+them, take none.
+
+---
+
 ## Documentation
 
 1. **[01-architecture.md](docs/01-architecture.md)** — how the pieces fit together
@@ -34,6 +47,9 @@ part you can't get from documentation elsewhere.
 4. **[04-kiosk-setup.md](docs/04-kiosk-setup.md)** — running it full-screen on a dedicated panel
 5. **[05-gotchas.md](docs/05-gotchas.md)** — the hard-won stuff
 6. **[06-kiosk-app.md](docs/06-kiosk-app.md)** — the native kiosk appliance
+
+Plus **[lovelace/patterns/](lovelace/patterns/README.md)** — 22 tile recipes with
+their own index.
 
 ---
 
