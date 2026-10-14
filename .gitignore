@@ -1,0 +1,16 @@
+# Safety net in case real Home Assistant files are ever copied in here
+secrets.yaml
+*.secret*
+.storage/
+*.db
+*.db-*
+*.log
+*.log.*
+.cloud/
+tts/
+backups/
+*.tar
+.env
+node_modules/
+.DS_Store
+Thumbs.db
