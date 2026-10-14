@@ -1,0 +1,16 @@
+- id: office_pc_shutdown_office_off
+  alias: Office PC shutdown - press Office OFF
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.office_pc_microphoneactive
+    to: unavailable
+    for: '00:00:30'
+  conditions:
+  - condition: state
+    entity_id: switch.office_socket
+    state: 'on'
+  actions:
+  - action: button.press
+    target:
+      entity_id: button.office_button_tap
+  mode: single

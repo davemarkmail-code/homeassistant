@@ -1,0 +1,87 @@
+# OUTLINE of the study door sign config (Waveshare ESP32-S3-Touch-LCD-4, Rev 4 board).
+# Shows the parts that took effort to find. Not a complete drop-in config:
+# check component options against the current ESPHome docs for your version.
+esphome:
+  name: study-sign
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: esp-idf
+
+psram:
+  mode: octal
+  speed: 80MHz
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+api:
+  encryption:
+    key: !secret study_sign_api_key
+
+ota:
+  - platform: esphome
+
+i2c:
+  sda: GPIO15
+  scl: GPIO7
+
+# Rev 4 boards use a CH32V003 IO expander at 0x24 (older boards: TCA9554)
+waveshare_io_ch32v003:
+  - id: io_exp
+
+spi:
+  id: lcd_spi            # "spi0" is reserved, pick another id
+  # clk / mosi pins per the Waveshare wiki
+
+display:
+  - platform: mipi_rgb
+    model: WAVESHARE-4-480X480
+    # pixel_mode left at the default 16bit: 18bit gave pinkish whites
+    reset_pin:
+      waveshare_io_ch32v003: io_exp
+      number: 3
+    auto_clear_enabled: false
+    update_interval: never
+
+touchscreen:
+  - platform: gt911
+    reset_pin:   { waveshare_io_ch32v003: io_exp, number: 1 }
+    interrupt_pin: { waveshare_io_ch32v003: io_exp, number: 2 }
+
+# State from Home Assistant
+binary_sensor:
+  - platform: homeassistant
+    id: on_call
+    entity_id: binary_sensor.dad_on_a_call
+  - platform: homeassistant
+    id: dnd
+    entity_id: input_boolean.dad_do_not_disturb
+
+text_sensor:
+  - platform: homeassistant
+    id: status
+    entity_id: input_select.dad_status
+  - platform: homeassistant
+    id: person
+    entity_id: person.dad
+
+# LVGL: two pages (status_page, idle_page). A script picks bg colour / icon / title / subtitle:
+#   on_call || dnd   -> red   "ON A CALL"
+#   status == DnD    -> purple "ADVENTURING"
+#   Coffee / Lonely / Snacks -> amber / pink fun screens
+#   API disconnected -> "Dad not in here (probably)" ghost - never a false "free"
+# Night: 4% backlight, touch wakes for 30 s.
+lvgl:
+  pages:
+    - id: status_page
+      widgets:
+        - label: { id: sb_title, align: CENTER, text: "" }
+        - label: { id: sb_sub,   align: CENTER, y: 60, text: "" }
+        - label: { id: sb_clock, align: TOP_LEFT,  x: 16,  y: 10, text: "" }
+        - label: { id: sb_date,  align: TOP_RIGHT, x: -16, y: 10, text: "" }
+    - id: idle_page
+      widgets:
+        - label: { id: idle_clock, align: CENTER, text: "" }

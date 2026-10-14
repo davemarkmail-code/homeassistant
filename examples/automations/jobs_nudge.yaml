@@ -1,0 +1,34 @@
+- id: jobs_nudge
+  alias: Jobs nudge
+  mode: single
+  triggers:
+  - trigger: time
+    at: '10:00:00'
+  - trigger: time
+    at: '16:30:00'
+  actions:
+  - repeat:
+      for_each:
+      - key: dad
+        notify: notify.mobile_app_dad_phone
+        list: todo.dad_jobs
+      - key: mum
+        notify: notify.mobile_app_mum_phone
+        list: todo.mum_jobs
+      sequence:
+      - variables:
+          open: >-
+            {{ (state_attr('sensor.family_jobs', repeat.item.key) or [])
+               | selectattr('status', 'ne', 'completed') | map(attribute='summary') | list }}
+      - if:
+        - condition: template
+          value_template: '{{ open | count > 0 }}'
+        then:
+        - action: '{{ repeat.item.notify }}'
+          data:
+            title: "{{ open | count }} job{{ '' if open | count == 1 else 's' }} still to do"
+            message: >-
+              {% for j in open %}{{ '❗ ' ~ j[2:] if j.startswith('! ') else '• ' ~ j }}{{ '\n' if not loop.last }}{% endfor %}
+            data:
+              url: /todo?entity_id={{ repeat.item.list }}
+              group: jobs-nudge

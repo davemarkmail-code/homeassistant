@@ -1,0 +1,18 @@
+# Records when a battery module's data last REALLY changed.
+# GivTCP's reconnects reset last_changed, so a hung module can look "fresh" without this.
+# Alert if this timestamp is more than an hour old.
+template:
+  - trigger:
+      - trigger: state
+        entity_id:
+          - sensor.givtcp_battery1_battery_voltage
+          - sensor.givtcp_battery1_battery_remaining_capacity
+          - sensor.givtcp_battery1_battery_cell_1_voltage
+          - sensor.givtcp_battery1_battery_soc
+        not_to: [unavailable, unknown]
+        not_from: [unavailable, unknown]
+    sensor:
+      - name: Battery 1 last reading
+        unique_id: battery_1_last_reading
+        device_class: timestamp
+        state: "{{ now().isoformat() }}"

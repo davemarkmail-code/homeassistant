@@ -1,0 +1,43 @@
+- id: roll20_dnd_mode
+  alias: Roll20 open - D&D mode on the study sign
+  mode: queued
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.dad_dnd_session
+  - trigger: state
+    entity_id: input_select.dad_status
+    to: None
+  - trigger: state
+    entity_id: input_boolean.dad_do_not_disturb
+    to: 'off'
+  actions:
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: binary_sensor.dad_dnd_session
+        state: 'on'
+      - condition: state
+        entity_id: input_boolean.dad_do_not_disturb
+        state: 'off'
+      - condition: state
+        entity_id: input_select.dad_status
+        state: None
+      sequence:
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.dad_status
+        data:
+          option: DnD
+    - conditions:
+      - condition: state
+        entity_id: binary_sensor.dad_dnd_session
+        state: 'off'
+      - condition: state
+        entity_id: input_select.dad_status
+        state: DnD
+      sequence:
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.dad_status
+        data:
+          option: None

@@ -1,0 +1,64 @@
+- id: dad_dnd_meetings
+  alias: Dad DND during meetings and calls
+  triggers:
+  - trigger: state
+    entity_id:
+    - binary_sensor.dad_in_a_meeting
+    - binary_sensor.dad_on_a_call
+    to: 'on'
+    # ignore template reloads / HA restarts (sensor comes back from unavailable)
+    not_from:
+    - unavailable
+    - unknown
+    id: start
+  - trigger: state
+    entity_id:
+    - binary_sensor.dad_in_a_meeting
+    - binary_sensor.dad_on_a_call
+    to: 'off'
+    for:
+      minutes: 1
+    id: end
+  - trigger: state
+    entity_id: input_boolean.dad_do_not_disturb
+    to: 'off'
+    id: cleared
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: start
+      - condition: state
+        entity_id: input_boolean.dad_do_not_disturb
+        state: 'off'
+      sequence:
+      - action: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.dad_dnd_auto
+      - action: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.dad_do_not_disturb
+    - conditions:
+      - condition: trigger
+        id: end
+      - condition: state
+        entity_id: binary_sensor.dad_in_a_meeting
+        state: 'off'
+      - condition: state
+        entity_id: binary_sensor.dad_on_a_call
+        state: 'off'
+      - condition: state
+        entity_id: input_boolean.dad_dnd_auto
+        state: 'on'
+      sequence:
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.dad_do_not_disturb
+    - conditions:
+      - condition: trigger
+        id: cleared
+      sequence:
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.dad_dnd_auto
+  mode: queued

@@ -1,0 +1,65 @@
+- id: nightly_auto_updates
+  alias: Nightly auto updates (after a backup)
+  mode: single
+  triggers:
+  - trigger: time
+    at: '03:00:00'
+  variables:
+    skip:
+    - update.study_sign_firmware
+    - update.desk_lightstrip_firmware
+    - update.home_assistant_core_update
+    - update.home_assistant_operating_system_update
+    pending: "{{ states.update | selectattr('state','eq','on') | map(attribute='entity_id') | reject('in', skip) | list }}"
+    core_ok: "{{ is_state('update.home_assistant_core_update','on') and not (state_attr('update.home_assistant_core_update','latest_version') or '').endswith('.0') }}"
+    os_ok: "{{ is_state('update.home_assistant_operating_system_update','on') }}"
+  conditions:
+  - condition: template
+    value_template: "{{ pending | count > 0 or core_ok or os_ok }}"
+  actions:
+  - variables:
+      before: "{{ states('sensor.backup_last_successful_automatic_backup') }}"
+  - action: backup.create_automatic
+  - wait_template: "{{ not is_state('sensor.backup_backup_manager_state','idle') }}"
+    timeout: '00:02:00'
+  - wait_template: "{{ is_state('sensor.backup_backup_manager_state','idle') }}"
+    timeout: '01:00:00'
+  - if:
+    - condition: template
+      value_template: "{{ states('sensor.backup_last_successful_automatic_backup') == before }}"
+    then:
+    - action: notify.mobile_app_dad_phone
+      data:
+        title: Nightly updates skipped
+        message: The backup didn't complete, so no updates were installed.
+    - stop: backup failed
+  - action: persistent_notification.create
+    data:
+      notification_id: nightly_updates
+      title: Nightly updates {{ now().strftime('%d %b') }}
+      message: >-
+        Backup OK. Installing: {{ (pending | map('state_attr','friendly_name') | list
+        + (['Home Assistant Core ' ~ state_attr('update.home_assistant_core_update','latest_version')] if core_ok else [])
+        + (['Home Assistant OS'] if os_ok and not core_ok else [])) | join(', ') }}
+  - repeat:
+      for_each: "{{ pending }}"
+      sequence:
+      - action: update.install
+        continue_on_error: true
+        target:
+          entity_id: "{{ repeat.item }}"
+  - choose:
+    - conditions: "{{ core_ok }}"
+      sequence:
+      - action: update.install
+        target:
+          entity_id: update.home_assistant_core_update
+    - conditions: "{{ os_ok }}"
+      sequence:
+      - action: update.install
+        target:
+          entity_id: update.home_assistant_operating_system_update
+    # HACS updates (supported_features 23) need an HA restart to load
+    - conditions: "{{ pending | map('state_attr','supported_features') | select('eq', 23) | list | count > 0 }}"
+      sequence:
+      - action: homeassistant.restart

@@ -1,0 +1,48 @@
+- id: front_door_lock_battery_alert
+  alias: Front door lock - battery alert
+  mode: queued
+  triggers:
+  - trigger: numeric_state
+    entity_id: sensor.front_door_lock_battery
+    below: 25
+    for: '00:10:00'
+    id: low
+  - trigger: state
+    entity_id: binary_sensor.front_door_battery_critical
+    to: 'on'
+    id: critical
+  - trigger: state
+    entity_id: binary_sensor.front_door_keypad_battery_critical
+    to: 'on'
+    id: keypad
+  - trigger: state
+    entity_id: lock.front_door
+    to: unavailable
+    for: '00:10:00'
+    id: offline
+  - trigger: time
+    at: '18:00:00'
+    id: daily
+  conditions:
+  - condition: template
+    value_template: >
+      {% set lowp = states('sensor.front_door_lock_battery') | float(100) < 25 %}
+      {{ trigger.id != 'daily' or lowp or is_state('binary_sensor.front_door_battery_critical','on')
+         or is_state('binary_sensor.front_door_keypad_battery_critical','on')
+         or is_state('lock.front_door','unavailable') }}
+  actions:
+  - variables:
+      pct: "{{ states('sensor.front_door_lock_battery') }}"
+      msgs: >
+        {% set m = [] %}
+        {% if is_state('lock.front_door','unavailable') %}{% set m = m + ['Lock is OFFLINE - battery probably flat, door may not lock'] %}
+        {% elif is_state('binary_sensor.front_door_battery_critical','on') %}{% set m = m + ['Lock battery CRITICAL (' ~ pct ~ '%) - charge it today'] %}
+        {% elif pct | float(100) < 25 %}{% set m = m + ['Lock battery low (' ~ pct ~ '%)'] %}{% endif %}
+        {% if is_state('binary_sensor.front_door_keypad_battery_critical','on') %}{% set m = m + ['Keypad battery low - change soon'] %}{% endif %}
+        {{ m | join('\n') }}
+  - condition: template
+    value_template: "{{ msgs | length > 0 }}"
+  - action: notify.mobile_app_dad_phone
+    data:
+      title: Front door battery
+      message: "{{ msgs }}"

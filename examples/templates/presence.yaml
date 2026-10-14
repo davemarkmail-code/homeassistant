@@ -1,0 +1,35 @@
+# Presence / call detection template sensors.
+# Sources: HASS.Agent on the office PC (mic/webcam in use, plus a custom PowerShell sensor).
+template:
+  - binary_sensor:
+      # Windows Hello face login uses the webcam for ~20 s; don't count that as a call
+      - name: Office webcam in use
+        unique_id: office_webcam_in_use
+        icon: mdi:webcam
+        delay_on: "00:00:45"
+        state: "{{ is_state('binary_sensor.office_pc_webcamactive', 'on') }}"
+
+      # Roll20 open in any browser tab (see ../pc/roll20.ps1). 30 s grace after closing.
+      - name: Dad D&D session
+        unique_id: dad_dnd_session
+        icon: mdi:dice-d20
+        delay_off: "00:00:30"
+        state: "{{ is_state('sensor.office_roll20', 'on') }}"
+
+      # Home + mic or webcam in use, but not during D&D (voice chat isn't a call)
+      - name: Dad on a call
+        unique_id: dad_on_a_call
+        icon: mdi:phone-in-talk
+        delay_off: "00:00:20"
+        state: >-
+          {{ is_state('person.dad', 'home')
+             and not is_state('binary_sensor.dad_dnd_session', 'on')
+             and (is_state('binary_sensor.office_pc_microphoneactive', 'on')
+                  or is_state('binary_sensor.office_webcam_in_use', 'on')) }}
+
+      # PC is on while HASS.Agent is reporting. 3 min grace rides out its brief reconnects.
+      - name: Office PC on
+        unique_id: office_pc_on
+        icon: mdi:desktop-tower-monitor
+        delay_off: "00:03:00"
+        state: "{{ states('binary_sensor.office_pc_microphoneactive') not in ['unavailable', 'unknown'] }}"

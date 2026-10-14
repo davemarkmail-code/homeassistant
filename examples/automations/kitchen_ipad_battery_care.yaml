@@ -1,0 +1,106 @@
+- id: kitchen_ipad_battery_care
+  alias: Kitchen iPad battery care
+  triggers:
+  - trigger: numeric_state
+    entity_id: sensor.kitchen_ipad_battery_level
+    above: input_number.ipad_charge_max
+    id: high
+  - trigger: numeric_state
+    entity_id: sensor.kitchen_ipad_battery_level
+    below: input_number.ipad_charge_min
+    id: low
+  - trigger: state
+    entity_id: sensor.kitchen_ipad_battery_level
+    to:
+    - unavailable
+    - unknown
+    for:
+      minutes: 15
+    id: lost
+  - trigger: time_pattern
+    minutes: /10
+    id: poll
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: high
+      sequence:
+      - action: switch.turn_off
+        continue_on_error: true
+        target:
+          entity_id: switch.kitchen_ipad_plug
+    - conditions:
+      - condition: trigger
+        id: low
+      sequence:
+      - action: switch.turn_on
+        continue_on_error: true
+        target:
+          entity_id: switch.kitchen_ipad_plug
+    - conditions:
+      - condition: trigger
+        id: lost
+      sequence:
+      - action: switch.turn_on
+        continue_on_error: true
+        target:
+          entity_id: switch.kitchen_ipad_plug
+      - action: notify.mobile_app_dad_phone
+        continue_on_error: true
+        data:
+          title: Kitchen iPad battery care
+          message: Battery sensor unavailable - charger switched back on.
+    - conditions:
+      - condition: trigger
+        id: poll
+      sequence:
+      - variables:
+          lvl: '{{ states(''sensor.kitchen_ipad_battery_level'') | float(-1) }}'
+          mn: '{{ states(''input_number.ipad_charge_min'') | float(50) }}'
+          mx: '{{ states(''input_number.ipad_charge_max'') | float(80) }}'
+          plugOn: '{{ is_state(''switch.kitchen_ipad_plug'',''on'') }}'
+          offHours: '{{ ((now() - states.switch.kitchen_ipad_plug.last_changed).total_seconds()
+            / 3600) | round(1) }}'
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ lvl >= 0 and lvl >= mx and plugOn }}'
+          sequence:
+          - action: switch.turn_off
+            continue_on_error: true
+            target:
+              entity_id: switch.kitchen_ipad_plug
+        - conditions:
+          - condition: template
+            value_template: '{{ lvl >= 0 and lvl <= mn and not plugOn }}'
+          sequence:
+          - action: switch.turn_on
+            continue_on_error: true
+            target:
+              entity_id: switch.kitchen_ipad_plug
+        - conditions:
+          - condition: template
+            value_template: '{{ (not plugOn) and (offHours | float(0) > 14) }}'
+          sequence:
+          - action: switch.turn_on
+            continue_on_error: true
+            target:
+              entity_id: switch.kitchen_ipad_plug
+          - action: notify.mobile_app_dad_phone
+            continue_on_error: true
+            data:
+              title: Kitchen iPad battery care
+              message: Charger off for {{ offHours }}h with no low reading - switched
+                back on as a precaution.
+      - if:
+        - condition: template
+          value_template: '{{ not plugOn }}'
+        then:
+        - action: notify.mobile_app_kitchen_ipad
+          continue_on_error: true
+          data:
+            message: request_location_update
+  mode: queued
+  max: 5
